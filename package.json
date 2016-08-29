@@ -1,0 +1,24 @@
+{
+  "name": "get-calendar-cron",
+  "version": "1.0.0",
+  "description": "grab calendar events",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Lin Qiu",
+  "license": "ISC",
+  "dependencies": {
+    "any-promise": "^1.3.0",
+    "bluebird": "^3.4.1",
+    "dynamodb-doc": "^1.0.0",
+    "googleapis": "^12.4.0",
+    "lodash": "^4.14.0",
+    "moment": "^2.14.1"
+  },
+  "devDependencies": {
+    "grunt": "^1.0.1",
+    "grunt-aws-lambda": "^0.13.0",
+    "grunt-contrib-clean": "^1.0.0"
+  }
+}
