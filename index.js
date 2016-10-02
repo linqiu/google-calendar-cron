@@ -29,6 +29,27 @@ exports.handler = function (event, context) {
         });
     }
 
+    function updateCalendar(data) {
+        var params = {
+            TableName: 'home-integration',
+            Item: {
+                key: 'google-calendar',
+                data: data
+            }
+        };
+
+        return new Promise(function(resolve, reject){
+            dynamo.putItem(params, function(err, data) {
+                if(err) {
+                    reject(err);
+                }
+                else {
+                    resolve(data);
+                }
+            });
+        });
+    }
+
     getGoogleCredentials().then(function(data) {
         var CLIENT_ID = data.client_id;
         var CLIENT_SECRET = data.client_secret;
@@ -56,13 +77,24 @@ exports.handler = function (event, context) {
                 context.fail(err);
             }
 
-            var events = _.filter(response.items, function(item) {
-                return item.summary.startsWith(data.filter_term);
-            });
+            var events = _(response.items).filter(function(item) {
+                    return item.summary.startsWith(data.filter_term);
+                })
+                .sortBy(function(item) {
+                    var date = item.start.date || item.start.dateTime;
+                    return moment(date).unix();
+                })
+                .map(function(item) {
+                    var date = item.start.date || item.start.dateTime;
+                    return {
+                        event: item.summary,
+                        time: moment(date).format(data.date_format)
+                    };
+                }).value();
 
-            console.log(events[0]);
-            console.log(_.map(events, function(item) { return [item.summary, moment(item.start.dateTime).format(data.date_format)];}));
-            context.done();
+            updateCalendar(events).then(function() {
+                context.done();
+            });
         });
     });
 };
