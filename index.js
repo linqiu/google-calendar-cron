@@ -29,12 +29,13 @@ exports.handler = function (event, context) {
         });
     }
 
-    function updateCalendar(data) {
+    function updateCalendar(data, terms) {
         var params = {
             TableName: 'home-integration',
             Item: {
                 key: 'google-calendar',
-                data: data
+                data: data,
+                terms: terms
             }
         };
 
@@ -50,12 +51,30 @@ exports.handler = function (event, context) {
         });
     }
 
+    function determineStartTimes(item, summary, startTimes) {
+        var actualStartTime = '';
+
+        _.each(startTimes, function(startTime){
+            if (summary.includes(startTime.type)) {
+                actualStartTime = startTime.regular;
+
+                if (summary.includes('early')) {
+                    actualStartTime = startTime.early;
+                }
+
+                item.start_time = actualStartTime;
+            }
+        });
+    }
+
     getGoogleCredentials().then(function(data) {
         var CLIENT_ID = data.client_id;
         var CLIENT_SECRET = data.client_secret;
         var REDIRECT_URL = data.redirect_url;
 
         var oauth2Client = new OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL);
+        var filterTerm = data.terms.filter;
+        var startTimes = data.start_times;
 
         oauth2Client.setCredentials({
           access_token: data.access_token,
@@ -78,7 +97,7 @@ exports.handler = function (event, context) {
             }
 
             var events = _(response.items).filter(function(item) {
-                    return item.summary.startsWith(data.filter_term);
+                    return item.summary.startsWith(filterTerm);
                 })
                 .sortBy(function(item) {
                     var date = item.start.date || item.start.dateTime;
@@ -86,13 +105,17 @@ exports.handler = function (event, context) {
                 })
                 .map(function(item) {
                     var date = item.start.date || item.start.dateTime;
-                    return {
+                    var itemData = {
                         event: item.summary,
                         time: moment(date).format(data.date_format)
                     };
+
+                    determineStartTimes(itemData, item.summary.toLowerCase(), startTimes);
+
+                    return itemData;
                 }).value();
 
-            updateCalendar(events).then(function() {
+            updateCalendar(events, data.terms).then(function() {
                 context.done();
             });
         });
